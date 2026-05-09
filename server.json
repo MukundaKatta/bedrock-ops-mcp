@@ -1,0 +1,21 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.MukundaKatta/bedrock-ops",
+  "description": "AWS Bedrock model capability lookup, feature pre-check, and PII-safe response redaction. Wraps the Python bedrock-ops library.",
+  "version": "0.1.0",
+  "repository": {
+    "url": "https://github.com/MukundaKatta/bedrock-ops-mcp",
+    "source": "github"
+  },
+  "websiteUrl": "https://github.com/MukundaKatta/bedrock-ops-mcp",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@mukundakatta/bedrock-ops-mcp",
+      "version": "0.1.0",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

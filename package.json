@@ -1,0 +1,63 @@
+{
+  "name": "@mukundakatta/bedrock-ops-mcp",
+  "version": "0.1.0",
+  "mcpName": "io.github.MukundaKatta/bedrock-ops",
+  "description": "MCP server: AWS Bedrock model capability lookup + feature pre-check + PII-safe response redaction. Wraps the Python bedrock-ops library.",
+  "type": "module",
+  "bin": {
+    "mcp-bedrock-ops": "dist/server.js"
+  },
+  "main": "dist/server.js",
+  "types": "dist/server.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "tsx src/server.ts",
+    "test": "node --test --import tsx test/*.test.ts",
+    "lint": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "claude",
+    "cursor",
+    "cline",
+    "windsurf",
+    "zed",
+    "bedrock-ops",
+    "aws",
+    "bedrock",
+    "anthropic",
+    "claude-sonnet",
+    "guardrails",
+    "ai-tools"
+  ],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "server.json"
+  ],
+  "author": "Mukunda Katta",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MukundaKatta/bedrock-ops-mcp.git"
+  },
+  "homepage": "https://github.com/MukundaKatta/bedrock-ops-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/MukundaKatta/bedrock-ops-mcp/issues"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.5.0"
+  }
+}
