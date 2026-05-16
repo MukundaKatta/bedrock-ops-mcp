@@ -1,6 +1,23 @@
+# Node
 node_modules/
 dist/
 *.log
+
+# npm pack output
+*.tgz
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Env
+.env
+.env.local
+
+# Editors
 .DS_Store
 .idea/
 .vscode/
+
+# OS
+Thumbs.db

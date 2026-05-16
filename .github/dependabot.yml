@@ -1,0 +1,33 @@
+version: 2
+updates:
+  # npm runtime + dev dependencies
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    groups:
+      mcp-sdk:
+        applies-to: version-updates
+        patterns:
+          - "@modelcontextprotocol/*"
+      dev-deps:
+        applies-to: version-updates
+        dependency-type: "development"
+    commit-message:
+      prefix: "deps"
+    labels:
+      - "dependencies"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: "ci"
+    labels:
+      - "ci"
+      - "dependencies"
