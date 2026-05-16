@@ -1,7 +1,12 @@
 # bedrock-ops-mcp
 
 [![npm](https://img.shields.io/npm/v/@mukundakatta/bedrock-ops-mcp.svg)](https://www.npmjs.com/package/@mukundakatta/bedrock-ops-mcp)
+[![npm downloads](https://img.shields.io/npm/dm/@mukundakatta/bedrock-ops-mcp.svg)](https://www.npmjs.com/package/@mukundakatta/bedrock-ops-mcp)
+[![CI](https://github.com/MukundaKatta/bedrock-ops-mcp/actions/workflows/test.yml/badge.svg)](https://github.com/MukundaKatta/bedrock-ops-mcp/actions/workflows/test.yml)
+[![Node](https://img.shields.io/node/v/@mukundakatta/bedrock-ops-mcp.svg)](https://nodejs.org)
+[![license](https://img.shields.io/npm/l/@mukundakatta/bedrock-ops-mcp.svg)](./LICENSE)
 [![mcp](https://img.shields.io/badge/mcp-stdio-blue)](https://modelcontextprotocol.io)
+[![runtime deps](https://img.shields.io/badge/runtime%20deps-1-brightgreen)](./package.json)
 
 MCP server for AWS Bedrock model intelligence + PII-safe response handling. Wraps the Python library [`bedrock-ops`](https://github.com/MukundaKatta/bedrock-ops) by re-implementing its query-shaped surface natively in TypeScript so the MCP server has zero runtime deps beyond the MCP SDK.
 
