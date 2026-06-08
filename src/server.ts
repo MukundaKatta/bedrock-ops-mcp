@@ -44,10 +44,12 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 
 import {
-  listKnownModels,
-  lookupCapabilities,
-  type ModelCapabilities,
-} from './capabilities.js';
+  capabilitiesTool,
+  precheckTool,
+  redactResponseTool,
+  type ConverseResponse,
+  type PrecheckArgs,
+} from './tools.js';
 
 const VERSION = '0.1.0';
 
@@ -157,15 +159,19 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
   try {
     switch (name) {
       case 'bedrock_capabilities':
-        return capabilitiesTool(args as unknown as { model_id: string });
+        return jsonResult(
+          capabilitiesTool(args as unknown as { model_id: string }),
+        );
       case 'bedrock_precheck':
-        return precheckTool(args as unknown as PrecheckArgs);
+        return jsonResult(precheckTool(args as unknown as PrecheckArgs));
       case 'bedrock_redact_response':
-        return redactResponseTool(
-          args as unknown as {
-            response: ConverseResponse;
-            guardrail_id: string;
-          },
+        return jsonResult(
+          redactResponseTool(
+            args as unknown as {
+              response: ConverseResponse;
+              guardrail_id: string;
+            },
+          ),
         );
       default:
         return errorResult('unknown tool: ' + name);
@@ -175,226 +181,9 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
   }
 });
 
-// --- types ---------------------------------------------------------------
-
-interface PrecheckArgs {
-  model_id: string;
-  use_prompt_cache?: boolean;
-  use_thinking?: boolean;
-  use_vision?: boolean;
-  use_tool_use?: boolean;
-  use_streaming?: boolean;
-  region?: string;
-}
-
-type ConverseContentBlock = {
-  text?: string;
-  toolUse?: unknown;
-  toolResult?: unknown;
-};
-
-interface ConverseResponse {
-  output?: {
-    message?: {
-      role?: string;
-      content?: ConverseContentBlock[];
-    };
-  };
-  stopReason?: string;
-  trace?: {
-    guardrail?: {
-      outputAssessments?: Record<string, Array<Record<string, unknown>>>;
-      inputAssessment?: Record<string, Record<string, unknown>>;
-    };
-  };
-  [k: string]: unknown;
-}
-
-const REDACTED = '[REDACTED-by-bedrock-ops]';
-
-const FILTER_TYPES = [
-  'topicPolicy',
-  'contentPolicy',
-  'wordPolicy',
-  'sensitiveInformationPolicy',
-  'contextualGroundingPolicy',
-] as const;
-
-// --- tool implementations ------------------------------------------------
-
-function capabilitiesTool(args: { model_id: string }) {
-  const cap = lookupCapabilities(args.model_id);
-  if (cap === null) {
-    return jsonResult({
-      model_id: args.model_id,
-      known: false,
-      message:
-        `No capability data for model_id=${JSON.stringify(args.model_id)}. ` +
-        `Either it's a new model not yet in the table, or a typo. ` +
-        `Pass one of the known_models below.`,
-      known_models: listKnownModels(),
-    });
-  }
-  return jsonResult({
-    model_id: args.model_id,
-    known: true,
-    capabilities: cap,
-  });
-}
-
-function precheckTool(args: PrecheckArgs) {
-  const cap = lookupCapabilities(args.model_id);
-  if (cap === null) {
-    return jsonResult({
-      ok: false,
-      model_id: args.model_id,
-      reason: 'unknown_model',
-      message:
-        `No capability data for model_id=${JSON.stringify(args.model_id)}. ` +
-        `Cannot precheck features.`,
-    });
-  }
-
-  const requested = {
-    use_prompt_cache: !!args.use_prompt_cache,
-    use_thinking: !!args.use_thinking,
-    use_vision: !!args.use_vision,
-    use_tool_use: !!args.use_tool_use,
-    use_streaming: !!args.use_streaming,
-  };
-
-  const missing: string[] = [];
-  if (requested.use_prompt_cache && !cap.supports_prompt_cache)
-    missing.push('prompt_cache');
-  if (requested.use_thinking && !cap.supports_thinking) missing.push('thinking');
-  if (requested.use_vision && !cap.supports_vision) missing.push('vision');
-  if (requested.use_tool_use && !cap.supports_tool_use)
-    missing.push('tool_use');
-  if (requested.use_streaming && !cap.supports_streaming)
-    missing.push('streaming');
-
-  let regionError: string | undefined;
-  if (args.region && !cap.available_regions.includes(args.region)) {
-    regionError = `model_id=${args.model_id} is not available in region ${args.region}; available: ${cap.available_regions.join(', ')}`;
-  }
-
-  if (missing.length === 0 && !regionError) {
-    return jsonResult({
-      ok: true,
-      model_id: args.model_id,
-      requested,
-      region: args.region ?? null,
-    });
-  }
-
-  const messages: string[] = [];
-  if (missing.length > 0) {
-    messages.push(
-      `Model ${args.model_id} does not support: ${missing.join(', ')}`,
-    );
-  }
-  if (regionError) messages.push(regionError);
-
-  return jsonResult({
-    ok: false,
-    model_id: args.model_id,
-    requested,
-    region: args.region ?? null,
-    unsupported_features: missing,
-    region_error: regionError ?? null,
-    message: messages.join('. '),
-  });
-}
-
-function redactResponseTool(args: {
-  response: ConverseResponse;
-  guardrail_id: string;
-}) {
-  const { response, guardrail_id } = args;
-  const intervention = checkGuardrailIntervention(response, guardrail_id);
-  if (intervention === null) {
-    return jsonResult({
-      intervened: false,
-      response,
-    });
-  }
-
-  // Deep-copy + redact. We don't mutate the caller's input.
-  const safe: ConverseResponse = JSON.parse(JSON.stringify(response));
-  if (safe.output?.message) {
-    safe.output.message = {
-      role: safe.output.message.role ?? 'assistant',
-      content: [{ text: REDACTED }],
-    };
-  }
-  if (safe.trace) {
-    safe.trace = { guardrail: { redacted_by: 'bedrock-ops' } as never };
-  }
-
-  return jsonResult({
-    intervened: true,
-    intervention,
-    response: safe,
-  });
-}
-
-interface GuardrailIntervention {
-  guardrail_id: string;
-  action: 'BLOCKED' | 'ANONYMIZED';
-  intervened_on: 'input' | 'output';
-  categories: string[];
-}
-
-function checkGuardrailIntervention(
-  response: ConverseResponse,
-  guardrailId: string,
-): GuardrailIntervention | null {
-  const guardrail = response.trace?.guardrail;
-  if (!guardrail) return null;
-  const outputAssessments = guardrail.outputAssessments ?? {};
-  const inputAssessment = guardrail.inputAssessment ?? {};
-  const outputForId = outputAssessments[guardrailId] ?? [];
-  const inputForId = inputAssessment[guardrailId] ?? null;
-
-  if (outputForId.length === 0 && (inputForId === null || Object.keys(inputForId).length === 0)) {
-    return null;
-  }
-
-  const stopReason = response.stopReason ?? '';
-  const action: GuardrailIntervention['action'] =
-    stopReason === 'guardrail_intervened' ||
-    stopReason === 'GUARDRAIL_INTERVENED'
-      ? 'BLOCKED'
-      : 'ANONYMIZED';
-
-  let intervenedOn: GuardrailIntervention['intervened_on'];
-  let categoriesSet = new Set<string>();
-  if (outputForId.length > 0) {
-    intervenedOn = 'output';
-    for (const a of outputForId) {
-      for (const ft of FILTER_TYPES) {
-        if (ft in a) categoriesSet.add(ft);
-      }
-    }
-  } else {
-    intervenedOn = 'input';
-    if (inputForId !== null) {
-      for (const ft of FILTER_TYPES) {
-        if (ft in inputForId) categoriesSet.add(ft);
-      }
-    }
-  }
-
-  return {
-    guardrail_id: guardrailId,
-    action,
-    intervened_on: intervenedOn,
-    categories: Array.from(categoriesSet).sort(),
-  };
-}
-
 // --- helpers --------------------------------------------------------------
 
+/** Wrap a JSON-serialisable value in the MCP text-content envelope. */
 function jsonResult(value: unknown) {
   return {
     content: [
@@ -406,15 +195,13 @@ function jsonResult(value: unknown) {
   };
 }
 
+/** Build an MCP error result with `isError` set. */
 function errorResult(message: string) {
   return {
     isError: true,
     content: [{ type: 'text' as const, text: message }],
   };
 }
-
-// suppress unused-type warnings for fields that document future use
-void ({} as ModelCapabilities);
 
 // --- bootstrap ------------------------------------------------------------
 
