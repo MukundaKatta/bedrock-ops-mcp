@@ -2,6 +2,16 @@
 
 All notable changes to `bedrock-ops-mcp` are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- Extracted the three tool handlers (`bedrock_capabilities`, `bedrock_precheck`, `bedrock_redact_response`) and the guardrail-intervention detector into `src/tools.ts`, leaving `src/server.ts` as a thin stdio adapter. No behavioural change to the wire protocol.
+
+### Tested
+
+- The unit suite now imports and exercises the **shipped** handlers directly instead of re-implementing the precheck/intervention logic inside the test file, and grows from 13 to 25 tests. Added coverage for the full `capabilitiesTool`/`redactResponseTool` flows, the no-mutation guarantee of `bedrock_redact_response`, the input-assessment (`ANONYMIZED`) path, category de-duplication, multi-feature precheck aggregation, and the `apac.`/non-cross-region prefix-stripping cases.
+
 ## [0.1.0] — 2026-05-09
 
 Initial release. MCP server exposing AWS Bedrock model intelligence + PII-safe response handling to Claude Desktop, Cursor, Cline, Windsurf, Zed, and other MCP clients.
